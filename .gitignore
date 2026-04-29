@@ -1,5 +1,6 @@
 # Terraform
 *.tfvars
+saml-metadata.xml
 *.tfvars.json
 .terraform/
 .terraform.lock.hcl
