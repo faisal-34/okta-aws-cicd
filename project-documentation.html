@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Okta AWS CI/CD — Project Documentation</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      line-height: 1.7;
+    }
+
+    /* ── Sidebar layout ── */
+    .layout { display: flex; min-height: 100vh; }
+
+    nav {
+      width: 260px;
+      min-width: 260px;
+      background: #0f172a;
+      color: #94a3b8;
+      padding: 32px 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    nav .logo {
+      padding: 0 24px 24px;
+      border-bottom: 1px solid #1e293b;
+      margin-bottom: 16px;
+    }
+    nav .logo h2 { color: #f1f5f9; font-size: 15px; font-weight: 700; line-height: 1.3; }
+    nav .logo span { font-size: 12px; color: #64748b; }
+
+    nav ul { list-style: none; }
+    nav ul li a {
+      display: block;
+      padding: 8px 24px;
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 13.5px;
+      border-left: 3px solid transparent;
+      transition: all 0.15s;
+    }
+    nav ul li a:hover { color: #f1f5f9; background: #1e293b; border-left-color: #3b82f6; }
+    nav ul li.section-header {
+      padding: 16px 24px 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #475569;
+    }
+
+    main { flex: 1; padding: 48px 56px; max-width: 1100px; }
+
+    /* ── Typography ── */
+    h1 { font-size: 32px; font-weight: 800; color: #0f172a; margin-bottom: 8px; }
+    h2 { font-size: 22px; font-weight: 700; color: #0f172a; margin: 48px 0 16px; padding-bottom: 10px; border-bottom: 2px solid #e2e8f0; }
+    h3 { font-size: 16px; font-weight: 700; color: #1e293b; margin: 24px 0 10px; }
+    h4 { font-size: 13px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin: 16px 0 8px; }
+    p { margin-bottom: 14px; color: #334155; }
+    ul, ol { margin: 10px 0 14px 22px; color: #334155; }
+    li { margin-bottom: 6px; }
+
+    .page-meta { color: #64748b; font-size: 14px; margin-bottom: 32px; }
+
+    /* ── Code blocks ── */
+    pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 18px 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.6;
+      margin: 12px 0 20px;
+    }
+    code {
+      background: #e2e8f0;
+      color: #be185d;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: 'SF Mono', Consolas, monospace;
+    }
+    pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 6px;
+    }
+    .badge-green  { background: #dcfce7; color: #166534; }
+    .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+    .badge-orange { background: #ffedd5; color: #9a3412; }
+    .badge-red    { background: #fee2e2; color: #991b1b; }
+    .badge-purple { background: #ede9fe; color: #5b21b6; }
+
+    /* ── Cards ── */
+    .card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+    }
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 16px; }
+
+    /* ── Phase blocks ── */
+    .phase {
+      border-left: 4px solid #3b82f6;
+      background: #fff;
+      border-radius: 0 8px 8px 0;
+      padding: 18px 22px;
+      margin-bottom: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .phase.done  { border-left-color: #22c55e; }
+    .phase.issue { border-left-color: #f59e0b; }
+    .phase.blocker { border-left-color: #ef4444; }
+
+    .phase-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .phase-num {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: #3b82f6; color: #fff;
+      font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .phase.done .phase-num  { background: #22c55e; }
+    .phase.issue .phase-num { background: #f59e0b; }
+    .phase.blocker .phase-num { background: #ef4444; }
+
+    /* ── Bottleneck cards ── */
+    .bottleneck {
+      background: #fff;
+      border: 1px solid #fecaca;
+      border-top: 3px solid #ef4444;
+      border-radius: 8px;
+      padding: 18px 22px;
+      margin-bottom: 16px;
+    }
+    .bottleneck h3 { color: #b91c1c; margin-top: 0; }
+    .resolution {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-top: 10px;
+      font-size: 14px;
+      color: #166534;
+    }
+    .resolution strong { display: block; margin-bottom: 4px; }
+
+    /* ── Tables ── */
+    table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 14px; }
+    th { background: #f1f5f9; text-align: left; padding: 10px 14px; font-weight: 600; color: #475569; border-bottom: 2px solid #e2e8f0; }
+    td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8fafc; }
+
+    /* ── Callouts ── */
+    .callout {
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+    .callout-info    { background: #eff6ff; border-left: 4px solid #3b82f6; color: #1e40af; }
+    .callout-warn    { background: #fffbeb; border-left: 4px solid #f59e0b; color: #92400e; }
+    .callout-success { background: #f0fdf4; border-left: 4px solid #22c55e; color: #14532d; }
+
+    /* ── Flow diagram ── */
+    .flow { display: flex; align-items: center; flex-wrap: wrap; gap: 0; margin: 20px 0; }
+    .flow-step {
+      background: #1e293b;
+      color: #f1f5f9;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .flow-arrow { color: #64748b; font-size: 20px; padding: 0 8px; font-weight: 300; }
+
+    /* ── Section anchors ── */
+    section { margin-bottom: 16px; }
+    .anchor { display: block; position: relative; top: -80px; visibility: hidden; }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <nav>
+    <div class="logo">
+      <h2>Okta AWS CI/CD</h2>
+      <span>Project Documentation</span>
+    </div>
+    <ul>
+      <li class="section-header">Overview</li>
+      <li><a href="#scope">Project Scope</a></li>
+      <li><a href="#stack">Tech Stack</a></li>
+      <li><a href="#architecture">Architecture</a></li>
+
+      <li class="section-header">Process</li>
+      <li><a href="#phase1">Phase 1 — Infrastructure</a></li>
+      <li><a href="#phase2">Phase 2 — CI/CD Pipeline</a></li>
+      <li><a href="#phase3">Phase 3 — Okta SSO</a></li>
+      <li><a href="#phase4">Phase 4 — Validation</a></li>
+
+      <li class="section-header">Challenges</li>
+      <li><a href="#bottlenecks">Bottlenecks &amp; Fixes</a></li>
+
+      <li class="section-header">Reference</li>
+      <li><a href="#infra">Infrastructure Details</a></li>
+      <li><a href="#secrets">Secrets &amp; Config</a></li>
+      <li><a href="#commands">Key Commands</a></li>
+    </ul>
+  </nav>
+
+  <!-- ── Main content ── -->
+  <main>
+
+    <h1>Okta AWS CI/CD — Project Documentation</h1>
+    <p class="page-meta">
+      <span class="badge badge-green">✓ Completed</span>
+      <span class="badge badge-blue">AWS</span>
+      <span class="badge badge-purple">Okta</span>
+      <span class="badge badge-orange">Terraform</span>
+      April 2026
+    </p>
+
+    <!-- ── SCOPE ── -->
+    <a class="anchor" id="scope"></a>
+    <h2>Project Scope</h2>
+
+    <p>
+      This project demonstrates a production-style DevOps pipeline integrating identity management (Okta) with cloud infrastructure (AWS). It covers the full lifecycle: application containerisation, automated CI/CD deployment, and federated AWS Console access via SAML 2.0 SSO.
+    </p>
+
+    <div class="card-grid">
+      <div class="card">
+        <h3>🚀 CI/CD Automation</h3>
+        <p>Every push to <code>master</code> triggers a 3-job GitHub Actions pipeline: Docker build → Terraform apply → EC2 deploy.</p>
+      </div>
+      <div class="card">
+        <h3>🏗️ Infrastructure as Code</h3>
+        <p>All AWS resources (EC2, IAM, ECR, SAML provider, SSO roles) managed in Terraform with S3 remote state.</p>
+      </div>
+      <div class="card">
+        <h3>🔐 Okta SSO</h3>
+        <p>Users federate into the AWS Console via Okta SAML 2.0 — no AWS credentials required. Role access controlled by Okta group membership.</p>
+      </div>
+    </div>
+
+    <h3>In Scope</h3>
+    <ul>
+      <li>Containerised Node.js application (Docker + ECR)</li>
+      <li>GitHub Actions pipeline with 3 sequential jobs</li>
+      <li>EC2 instance provisioned and managed by Terraform</li>
+      <li>IAM roles for EC2 (ECR pull) and Okta SSO (Admin + ReadOnly)</li>
+      <li>AWS IAM SAML Identity Provider (<code>OktaSSOProvider</code>)</li>
+      <li>Okta SAML app with group-based role mapping</li>
+      <li>End-to-end SSO login validated</li>
+    </ul>
+
+    <h3>Out of Scope</h3>
+    <ul>
+      <li>Okta OIDC integration for the Node.js app itself</li>
+      <li>Custom domain / HTTPS / load balancer</li>
+      <li>Multi-environment (staging/prod) pipeline</li>
+      <li>Automated Okta provisioning in CI (runs manually due to Okta provider timeouts)</li>
+    </ul>
+
+    <!-- ── STACK ── -->
+    <a class="anchor" id="stack"></a>
+    <h2>Tech Stack</h2>
+
+    <table>
+      <thead><tr><th>Layer</th><th>Technology</th><th>Version / Detail</th></tr></thead>
+      <tbody>
+        <tr><td>Application</td><td>Node.js / Express</td><td>Port 3000, Dockerised</td></tr>
+        <tr><td>Container Registry</td><td>Amazon ECR</td><td><code>okta-aws-cicd</code></td></tr>
+        <tr><td>Compute</td><td>Amazon EC2</td><td>Amazon Linux 2023, t2.micro</td></tr>
+        <tr><td>IaC</td><td>Terraform</td><td>v1.5.0, AWS provider ~> 5.0, Okta provider ~> 4.0</td></tr>
+        <tr><td>State Backend</td><td>Amazon S3</td><td><code>okta-cicd-tfstate-493675641194</code></td></tr>
+        <tr><td>CI/CD</td><td>GitHub Actions</td><td>3-job pipeline on push to master</td></tr>
+        <tr><td>Identity Provider</td><td>Okta</td><td>trial-2304070.okta.com</td></tr>
+        <tr><td>Federation Protocol</td><td>SAML 2.0</td><td>Preconfigured <code>amazon_aws</code> Okta app</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ── ARCHITECTURE ── -->
+    <a class="anchor" id="architecture"></a>
+    <h2>Architecture</h2>
+
+    <div class="callout callout-info">
+      The full interactive diagram is in <code>architecture.html</code>. Below is a text summary of the two main flows.
+    </div>
+
+    <h3>CI/CD Flow</h3>
+    <div class="flow">
+      <div class="flow-step">Git Push → master</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">Build Job<br><small>Docker → ECR</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">Terraform Job<br><small>plan + apply</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">Deploy Job<br><small>SSH → EC2 → Docker run</small></div>
+    </div>
+
+    <h3>Okta SSO Flow</h3>
+    <div class="flow">
+      <div class="flow-step">User logs into Okta</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">Clicks AWS tile</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">Okta builds SAML assertion<br><small>role from group name</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">AWS validates against<br><small>OktaSSOProvider</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">Console access<br><small>as OktaSSOAdminRole</small></div>
+    </div>
+
+    <!-- ── PHASE 1 ── -->
+    <a class="anchor" id="phase1"></a>
+    <h2>Phase 1 — AWS Infrastructure</h2>
+
+    <div class="phase done">
+      <div class="phase-header"><div class="phase-num">1</div><h3>VPC &amp; Networking</h3></div>
+      <p>Identified existing VPC (<code>vpc-0b88b54e0ec77a954</code>) and subnet (<code>subnet-0b5d10ffdec5a01c2</code>). Added explicit <code>vpc_id</code> and <code>subnet_id</code> variables to the AWS module after EC2 was created in a subnet with no internet routing.</p>
+    </div>
+
+    <div class="phase done">
+      <div class="phase-header"><div class="phase-num">2</div><h3>EC2 + Security Group</h3></div>
+      <p>EC2 instance with Amazon Linux 2023, Docker installed via user data. Security group allows SSH (22) and app traffic (3000). Added <code>associate_public_ip_address = true</code> for accessibility in a non-default VPC.</p>
+    </div>
+
+    <div class="phase done">
+      <div class="phase-header"><div class="phase-num">3</div><h3>IAM Roles</h3></div>
+      <p>Two IAM role sets:</p>
+      <ul>
+        <li><strong>EC2 Instance Role</strong> — <code>okta-cicd-ec2-role</code> with <code>AmazonEC2ContainerRegistryReadOnly</code> — allows EC2 to pull from ECR without static credentials</li>
+        <li><strong>SSO Roles (conditional)</strong> — <code>OktaSSOAdminRole</code> (AdministratorAccess) and <code>OktaSSOReadOnlyRole</code> (ReadOnlyAccess) — created only when <code>okta_saml_metadata_xml</code> is provided</li>
+      </ul>
+    </div>
+
+    <div class="phase done">
+      <div class="phase-header"><div class="phase-num">4</div><h3>S3 Remote State</h3></div>
+      <p>Terraform state stored in <code>okta-cicd-tfstate-493675641194</code> in <code>us-east-1</code>. Enables the GitHub Actions pipeline to read and update state without local state files.</p>
+    </div>
+
+    <!-- ── PHASE 2 ── -->
+    <a class="anchor" id="phase2"></a>
+    <h2>Phase 2 — CI/CD Pipeline</h2>
+
+    <div class="phase done">
+      <div class="phase-header"><div class="phase-num">1</div><h3>Build Job</h3></div>
+      <p>Authenticates to ECR with <code>aws ecr get-login-password</code>, builds the Docker image from <code>app/Dockerfile</code>, tags with <code>:latest</code> and the commit SHA, pushes to ECR.</p>
+    </div>
+
+    <div class="phase done">
+      <div class="phase-header"><div class="phase-num">2</div><h3>Terraform Job</h3></div>
+      <p>Runs <code>terraform init</code> → <code>terraform plan</code> → <code>terraform apply</code> with <code>-auto-approve</code>. Uses <code>terraform_wrapper: false</code> to prevent output parsing issues. Extracts <code>ec2_public_ip</code> as a job output for the deploy step.</p>
+      <pre><code>- name: Get EC2 IP
+  id: tf-output
+  run: echo "ec2_public_ip=$(terraform output -raw ec2_public_ip)" >> $GITHUB_OUTPUT</code></pre>
+    </div>
+
+    <div class="phase done">
+      <div class="phase-header"><div class="phase-num">3</div><h3>Deploy Job</h3></div>
+      <p>Uses <code>appleboy/ssh-action</code> to SSH into the EC2 instance using the private key stored as a GitHub secret. Pulls the latest image from ECR and restarts the container on port 3000.</p>
+      <pre><code>script: |
+  aws ecr get-login-password --region us-east-1 | \
+    docker login --username AWS --password-stdin 493675641194.dkr.ecr.us-east-1.amazonaws.com
+  docker pull 493675641194.dkr.ecr.us-east-1.amazonaws.com/okta-aws-cicd:latest
+  docker stop app || true
+  docker rm app || true
+  docker run -d --name app -p 3000:3000 \
+    493675641194.dkr.ecr.us-east-1.amazonaws.com/okta-aws-cicd:latest</code></pre>
+    </div>
+
+    <!-- ── PHASE 3 ── -->
+    <a class="anchor" id="phase3"></a>
+    <h2>Phase 3 — Okta SSO Setup</h2>
+
+    <div class="callout callout-warn">
+      The Okta Terraform module is run <strong>manually</strong> (not in CI). The Okta provider caused infinite loops in GitHub Actions due to API polling timeouts. It is decoupled and run once from a local machine.
+    </div>
+
+    <div class="phase done">
+      <div class="phase-header"><div class="phase-num">1</div><h3>Okta Groups</h3></div>
+      <p>Two groups created with names matching Okta's AWS group filter pattern:</p>
+      <pre><code>aws_493675641194_OktaSSOAdminRole
+aws_493675641194_OktaSSOReadOnlyRole</code></pre>
+      <p>The naming convention is critical — Okta extracts <code>accountid</code> and <code>role</code> from these names to build the SAML <code>Role</code> attribute.</p>
+    </div>
+
+    <div class="phase done">
+      <div class="phase-header"><div class="phase-num">2</div><h3>Okta SAML App</h3></div>
+      <p>Preconfigured <code>amazon_aws</code> app deployed via <code>okta_app_saml</code> resource. Key settings:</p>
+      <pre><code>useGroupMapping  = true
+joinAllRoles     = false
+roleValuePattern = "arn:aws:iam::${accountid}:saml-provider/OktaSSOProvider,
+                    arn:aws:iam::${accountid}:role/${role}"</code></pre>
+    </div>
+
+    <div class="phase done">
+      <div class="phase-header"><div class="phase-num">3</div><h3>AWS SAML Provider</h3></div>
+      <p>SAML metadata XML extracted from Terraform state and passed to the AWS module via <code>terraform.tfvars</code> (heredoc syntax to preserve XML attribute quotes). Creates <code>aws_iam_saml_provider</code> named <code>OktaSSOProvider</code>.</p>
+    </div>
+
+    <div class="phase done">
+      <div class="phase-header"><div class="phase-num">4</div><h3>Group Assignment</h3></div>
+      <p>Both groups assigned to the SAML app via <code>okta_app_group_assignment</code>. The <code>profile</code> block was removed from assignments — the Okta provider v4.20.0 does not support <code>samlRoles</code> as a profile attribute on group assignments.</p>
+    </div>
+
+    <!-- ── PHASE 4 ── -->
+    <a class="anchor" id="phase4"></a>
+    <h2>Phase 4 — Validation</h2>
+
+    <div class="phase done">
+      <div class="phase-header"><div class="phase-num">1</div><h3>Pipeline End-to-End</h3></div>
+      <p>GitHub Actions run <code>25112548436</code> — all 3 jobs green. EC2 running Docker container confirmed accessible on port 3000.</p>
+    </div>
+
+    <div class="phase done">
+      <div class="phase-header"><div class="phase-num">2</div><h3>Okta SSO Login</h3></div>
+      <p>User <code>faisalsempa@gmail.com</code> added to <code>aws_493675641194_OktaSSOAdminRole</code> group. Clicked AWS tile at <code>trial-2304070.okta.com</code> → landed in AWS Console as:</p>
+      <pre><code>OktaSSOAdminRole/faisalsempa@gmail.com   (account: 493675641194)</code></pre>
+    </div>
+
+    <!-- ── BOTTLENECKS ── -->
+    <a class="anchor" id="bottlenecks"></a>
+    <h2>Bottlenecks &amp; Fixes</h2>
+
+    <div class="bottleneck">
+      <h3>1. Okta Terraform provider hung in GitHub Actions</h3>
+      <p>The <code>okta/okta</code> provider made long-polling API calls that exceeded the 15-minute job timeout, causing the pipeline to loop indefinitely and never complete.</p>
+      <div class="resolution">
+        <strong>Resolution</strong>
+        Removed the Okta module entirely from the CI pipeline. The Okta resources are managed separately via a local <code>terraform apply</code> in <code>terraform/okta/</code>. This decoupling also makes sense architecturally — Okta config changes are infrequent and don't need to run on every code push.
+      </div>
+    </div>
+
+    <div class="bottleneck">
+      <h3>2. EC2 created in subnet with no internet routing</h3>
+      <p>Terraform defaulted to the default VPC which had no available subnets in the account. The EC2 instance was unreachable — SSH timed out and the deploy job failed.</p>
+      <div class="resolution">
+        <strong>Resolution</strong>
+        Added explicit <code>vpc_id</code> and <code>subnet_id</code> variables to the AWS module pointing to a subnet with an internet gateway. Also added <code>associate_public_ip_address = true</code> since non-default VPC subnets don't auto-assign public IPs.
+      </div>
+    </div>
+
+    <div class="bottleneck">
+      <h3>3. EC2 couldn't pull from ECR (no IAM role)</h3>
+      <p>The deploy job SSH'd into EC2 and ran <code>aws ecr get-login-password</code> — this failed with a credentials error because the EC2 instance had no IAM instance profile attached.</p>
+      <div class="resolution">
+        <strong>Resolution</strong>
+        Created <code>aws_iam_role.ec2_instance</code>, attached <code>AmazonEC2ContainerRegistryReadOnly</code>, and created an <code>aws_iam_instance_profile</code>. Referenced the profile in the EC2 resource. This is more secure than embedding AWS keys in the deploy script.
+      </div>
+    </div>
+
+    <div class="bottleneck">
+      <h3>4. Deploy job had no EC2 IP — used dynamic lookup returning "None"</h3>
+      <p>The pipeline originally queried the AWS CLI at deploy time to get the EC2 IP. If the instance was still starting or the query returned multiple results, the IP was <code>None</code> and the SSH action failed.</p>
+      <div class="resolution">
+        <strong>Resolution</strong>
+        Changed to capture <code>ec2_public_ip</code> directly from Terraform output in the terraform job and pass it as a job output to the deploy job. This is deterministic and doesn't require a separate API call.
+      </div>
+    </div>
+
+    <div class="bottleneck">
+      <h3>5. <code>okta_app_group_assignment</code> failed — "Property 'samlRoles' not found"</h3>
+      <p>The Okta Terraform provider v4.20.0 removed support for <code>samlRoles</code> as a profile attribute on group assignments. The resource failed to create with a 400 error from the Okta API.</p>
+      <div class="resolution">
+        <strong>Resolution</strong>
+        Removed the <code>profile</code> block entirely from <code>okta_app_group_assignment</code> resources. Role assignment is handled by the group name pattern + <code>useGroupMapping = true</code> on the app, not by per-group profile attributes.
+      </div>
+    </div>
+
+    <div class="bottleneck">
+      <h3>6. SAML metadata XML quotes stripped when passed as CLI variable</h3>
+      <p>Passing the XML metadata as a <code>-var</code> flag on the command line caused PowerShell to strip the double quotes from XML attributes (e.g., <code>encoding="UTF-8"</code> became <code>encoding=UTF-8</code>). AWS IAM rejected the malformed XML with "Could not parse metadata".</p>
+      <div class="resolution">
+        <strong>Resolution</strong>
+        Wrote the XML to a <code>terraform.tfvars</code> file using a heredoc block. This preserves all whitespace and quotes. The tfvars file is gitignored.
+      </div>
+    </div>
+
+    <div class="bottleneck">
+      <h3>7. AWS returned "Invalid SAML response" — no Role attribute</h3>
+      <p>The first successful Okta → AWS redirect failed because the SAML assertion contained no <code>Role</code> attribute. The group names (<code>AWS-Admins</code>, <code>AWS-ReadOnly</code>) didn't match the Okta group filter pattern, so Okta didn't map any role.</p>
+      <div class="resolution">
+        <strong>Resolution</strong>
+        Renamed groups to <code>aws_&lt;accountid&gt;_&lt;rolename&gt;</code> pattern (e.g., <code>aws_493675641194_OktaSSOAdminRole</code>), enabled <code>useGroupMapping = true</code>, and set <code>roleValuePattern</code> to use <code>${accountid}</code> and <code>${role}</code> variables extracted from the group name.
+      </div>
+    </div>
+
+    <div class="bottleneck">
+      <h3>8. Okta 400 — conflicting SAML app settings</h3>
+      <p>Setting both <code>identityProviderArn</code> (single-role mode) and <code>useGroupMapping = true</code> (group mapping mode) simultaneously caused Okta to return a 400 on the SSO endpoint. Also, the <code>groupFilter</code> regex used Python-style named groups (<code>(?P&lt;name&gt;)</code>) instead of Okta's syntax (<code>(?{{name}})</code>).</p>
+      <div class="resolution">
+        <strong>Resolution</strong>
+        Removed <code>identityProviderArn</code> from <code>app_settings_json</code>. The provider ARN is handled entirely through <code>roleValuePattern</code> in group-mapping mode. Also corrected the regex syntax to <code>(?{{accountid}})</code> and <code>(?{{role}})</code>.
+      </div>
+    </div>
+
+    <!-- ── INFRA REFERENCE ── -->
+    <a class="anchor" id="infra"></a>
+    <h2>Infrastructure Details</h2>
+
+    <table>
+      <thead><tr><th>Resource</th><th>Name / ID</th></tr></thead>
+      <tbody>
+        <tr><td>AWS Account</td><td><code>493675641194</code></td></tr>
+        <tr><td>Region</td><td><code>us-east-1</code></td></tr>
+        <tr><td>VPC</td><td><code>vpc-0b88b54e0ec77a954</code></td></tr>
+        <tr><td>Subnet</td><td><code>subnet-0b5d10ffdec5a01c2</code></td></tr>
+        <tr><td>EC2 Instance</td><td><code>i-0bd1733612946852c</code></td></tr>
+        <tr><td>EC2 IAM Profile</td><td><code>okta-cicd-ec2-profile</code></td></tr>
+        <tr><td>ECR Repository</td><td><code>okta-aws-cicd</code></td></tr>
+        <tr><td>S3 State Bucket</td><td><code>okta-cicd-tfstate-493675641194</code></td></tr>
+        <tr><td>IAM SAML Provider</td><td><code>OktaSSOProvider</code></td></tr>
+        <tr><td>SSO Admin Role</td><td><code>OktaSSOAdminRole</code></td></tr>
+        <tr><td>SSO ReadOnly Role</td><td><code>OktaSSOReadOnlyRole</code></td></tr>
+        <tr><td>Okta Org</td><td><code>trial-2304070.okta.com</code></td></tr>
+        <tr><td>Okta SAML App ID</td><td><code>0oa12gesd7tfGGGLd698</code></td></tr>
+        <tr><td>Okta Admins Group</td><td><code>00g12geq3rmIDIZcG698</code></td></tr>
+        <tr><td>Okta ReadOnly Group</td><td><code>00g12ges1pxzKEN2o698</code></td></tr>
+      </tbody>
+    </table>
+
+    <!-- ── SECRETS ── -->
+    <a class="anchor" id="secrets"></a>
+    <h2>Secrets &amp; Config</h2>
+
+    <h3>GitHub Actions Secrets</h3>
+    <table>
+      <thead><tr><th>Secret</th><th>Used By</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>AWS_ACCESS_KEY_ID</code></td><td>All jobs</td><td>IAM user access key</td></tr>
+        <tr><td><code>AWS_SECRET_ACCESS_KEY</code></td><td>All jobs</td><td>IAM user secret key</td></tr>
+        <tr><td><code>EC2_SSH_KEY</code></td><td>Deploy job</td><td>Contents of <code>Okta.pem</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3>Local Terraform (gitignored)</h3>
+    <table>
+      <thead><tr><th>File</th><th>Contains</th></tr></thead>
+      <tbody>
+        <tr><td><code>terraform/okta/terraform.tfvars</code></td><td><code>okta_org_name</code>, <code>okta_api_token</code>, <code>aws_account_id</code></td></tr>
+        <tr><td><code>terraform/terraform.tfvars</code></td><td>SAML metadata XML, <code>app_image</code>, <code>key_name</code>, <code>aws_account_id</code></td></tr>
+        <tr><td><code>terraform/saml-metadata.xml</code></td><td>Okta SAML IdP metadata XML (source for tfvars)</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ── COMMANDS ── -->
+    <a class="anchor" id="commands"></a>
+    <h2>Key Commands</h2>
+
+    <h3>Deploy (automatic on push to master)</h3>
+    <pre><code>git push origin master</code></pre>
+
+    <h3>Update AWS infrastructure manually</h3>
+    <pre><code>cd terraform
+terraform init
+terraform apply -auto-approve</code></pre>
+
+    <h3>Update Okta config manually</h3>
+    <pre><code>cd terraform/okta
+terraform init
+terraform apply -auto-approve</code></pre>
+
+    <h3>Re-run AWS apply with SAML metadata (after Okta changes)</h3>
+    <pre><code># Extract latest SAML XML from Okta state
+cd terraform/okta
+terraform show -json | ConvertFrom-Json | ... | Out-File ../saml-metadata.xml
+
+# Apply AWS module
+cd ..
+terraform apply -auto-approve   # uses terraform.tfvars with heredoc XML</code></pre>
+
+    <h3>Check latest pipeline run</h3>
+    <pre><code>gh run list --repo faisal-34/okta-aws-cicd --limit 5</code></pre>
+
+    <div class="callout callout-success" style="margin-top: 40px;">
+      <strong>Project Status: Complete ✓</strong><br>
+      All pipeline jobs passing. Okta SSO federated login to AWS Console validated end-to-end as <code>OktaSSOAdminRole/faisalsempa@gmail.com</code>.
+    </div>
+
+  </main>
+</div>
+
+</body>
+</html>

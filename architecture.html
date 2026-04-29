@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Okta AWS CI/CD Pipeline — Architecture</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; color: #1a202c; }
+
+    h1 {
+      background: linear-gradient(135deg, #0062cc 0%, #6f42c1 100%);
+      color: white;
+      padding: 40px 48px;
+      font-size: 2rem;
+      letter-spacing: -0.5px;
+    }
+    h1 span { display: block; font-size: 1rem; font-weight: 400; opacity: 0.85; margin-top: 8px; }
+
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 36px 24px; }
+
+    .section { margin: 40px 0; }
+    .section-title {
+      font-size: 1.15rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: #5a67d8; margin-bottom: 20px;
+      border-bottom: 3px solid #e2e8f0; padding-bottom: 8px;
+    }
+
+    /* Business Context */
+    .biz-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    .biz-card {
+      background: white; border-radius: 12px; padding: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      border-left: 4px solid #5a67d8;
+    }
+    .biz-card h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: 1px; color: #718096; margin-bottom: 8px; }
+    .biz-card p { font-size: .95rem; color: #2d3748; line-height: 1.5; }
+
+    /* Pipeline flow */
+    .flow-wrap { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow-x: auto; }
+
+    /* Architecture layers */
+    .layers { display: flex; flex-direction: column; gap: 12px; }
+    .layer {
+      background: white; border-radius: 12px; padding: 20px 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      display: flex; align-items: flex-start; gap: 20px;
+    }
+    .layer-label {
+      min-width: 140px; font-size: .78rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1px; padding: 6px 12px;
+      border-radius: 6px; text-align: center; color: white;
+    }
+    .layer-items { display: flex; flex-wrap: wrap; gap: 10px; }
+    .chip {
+      padding: 6px 14px; border-radius: 20px; font-size: .85rem;
+      font-weight: 500; border: 1.5px solid; white-space: nowrap;
+    }
+
+    /* Features */
+    .feat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+    .feat-card {
+      background: white; border-radius: 12px; padding: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    .feat-card h3 { font-size: .95rem; font-weight: 700; color: #2d3748; margin-bottom: 12px; }
+    .feat-card ul { padding-left: 18px; }
+    .feat-card li { font-size: .875rem; color: #4a5568; line-height: 1.7; }
+
+    /* Secrets table */
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    th { background: #5a67d8; color: white; padding: 12px 16px; text-align: left; font-size: .85rem; }
+    td { padding: 11px 16px; border-bottom: 1px solid #e2e8f0; font-size: .875rem; }
+    tr:last-child td { border-bottom: none; }
+    code { background: #edf2f7; padding: 2px 7px; border-radius: 4px; font-family: monospace; font-size: .82rem; color: #2d3748; }
+
+    svg text { font-family: system-ui, sans-serif; }
+  </style>
+</head>
+<body>
+
+<h1>
+  Okta AWS CI/CD Pipeline
+  <span>Design overview — Identity-integrated infrastructure pipeline using GitHub Actions + Terraform + AWS + Okta</span>
+</h1>
+
+<div class="wrap">
+
+  <!-- ── 1. Business Context ─────────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-title">Business Context</div>
+    <div class="biz-grid">
+      <div class="biz-card">
+        <h3>Objective</h3>
+        <p>Automate provisioning of AWS infrastructure and Okta identity configuration from a single Git push.</p>
+      </div>
+      <div class="biz-card">
+        <h3>Users</h3>
+        <p>Developers push code; Okta SAML SSO grants AWS Console access to engineers via federated roles.</p>
+      </div>
+      <div class="biz-card">
+        <h3>Value</h3>
+        <p>Eliminate manual infra changes. Single source of truth for cloud resources and identity policies.</p>
+      </div>
+      <div class="biz-card">
+        <h3>Compliance</h3>
+        <p>All infrastructure changes tracked in Git history. IAM roles scoped to least-privilege ECR read.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 2. CI/CD Pipeline Flow ─────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-title">CI/CD Pipeline Flow (GitHub Actions)</div>
+    <div class="flow-wrap">
+      <svg viewBox="0 0 1100 300" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#718096"/>
+          </marker>
+          <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.10"/>
+          </filter>
+        </defs>
+
+        <!-- Trigger -->
+        <rect x="20" y="110" width="120" height="60" rx="10" fill="#ebf4ff" stroke="#4299e1" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="80" y="133" text-anchor="middle" font-size="11" fill="#2b6cb0" font-weight="700">git push</text>
+        <text x="80" y="149" text-anchor="middle" font-size="10" fill="#4a5568">master/main</text>
+        <text x="80" y="162" text-anchor="middle" font-size="10" fill="#4a5568">→ triggers</text>
+
+        <!-- Arrow -->
+        <path d="M140,140 L175,140" stroke="#718096" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- Job 1: Build -->
+        <rect x="175" y="60" width="180" height="160" rx="12" fill="#e6fffa" stroke="#38b2ac" stroke-width="1.5" filter="url(#shadow)"/>
+        <rect x="175" y="60" width="180" height="32" rx="12" fill="#38b2ac"/>
+        <rect x="175" y="79" width="180" height="13" fill="#38b2ac"/>
+        <text x="265" y="81" text-anchor="middle" font-size="11" fill="white" font-weight="700">Job 1: Build</text>
+        <text x="265" y="113" text-anchor="middle" font-size="10" fill="#2d3748">• Checkout code</text>
+        <text x="265" y="130" text-anchor="middle" font-size="10" fill="#2d3748">• Build Docker image</text>
+        <text x="265" y="147" text-anchor="middle" font-size="10" fill="#2d3748">• Push to ECR</text>
+        <text x="265" y="164" text-anchor="middle" font-size="10" fill="#2d3748">• Output: image URI</text>
+        <text x="265" y="197" text-anchor="middle" font-size="9" fill="#718096">~20s</text>
+
+        <!-- Arrow -->
+        <path d="M355,140 L390,140" stroke="#718096" stroke-width="1.5" marker-end="url(#arr)"/>
+        <text x="372" y="133" text-anchor="middle" font-size="9" fill="#718096">needs:</text>
+        <text x="372" y="155" text-anchor="middle" font-size="9" fill="#718096">build</text>
+
+        <!-- Job 2: Terraform -->
+        <rect x="390" y="60" width="210" height="160" rx="12" fill="#faf5ff" stroke="#9f7aea" stroke-width="1.5" filter="url(#shadow)"/>
+        <rect x="390" y="60" width="210" height="32" rx="12" fill="#9f7aea"/>
+        <rect x="390" y="79" width="210" height="13" fill="#9f7aea"/>
+        <text x="495" y="81" text-anchor="middle" font-size="11" fill="white" font-weight="700">Job 2: Terraform</text>
+        <text x="495" y="113" text-anchor="middle" font-size="10" fill="#2d3748">• terraform init  (S3 backend)</text>
+        <text x="495" y="130" text-anchor="middle" font-size="10" fill="#2d3748">• terraform plan</text>
+        <text x="495" y="147" text-anchor="middle" font-size="10" fill="#2d3748">• terraform apply -auto-approve</text>
+        <text x="495" y="164" text-anchor="middle" font-size="10" fill="#2d3748">• Output: ec2_public_ip</text>
+        <text x="495" y="197" text-anchor="middle" font-size="9" fill="#718096">~1m 40s</text>
+
+        <!-- Arrow -->
+        <path d="M600,140 L635,140" stroke="#718096" stroke-width="1.5" marker-end="url(#arr)"/>
+        <text x="617" y="133" text-anchor="middle" font-size="9" fill="#718096">needs:</text>
+        <text x="617" y="155" text-anchor="middle" font-size="9" fill="#718096">terraform</text>
+
+        <!-- Job 3: Deploy -->
+        <rect x="635" y="60" width="200" height="160" rx="12" fill="#fff5f5" stroke="#fc8181" stroke-width="1.5" filter="url(#shadow)"/>
+        <rect x="635" y="60" width="200" height="32" rx="12" fill="#e53e3e"/>
+        <rect x="635" y="79" width="200" height="13" fill="#e53e3e"/>
+        <text x="735" y="81" text-anchor="middle" font-size="11" fill="white" font-weight="700">Job 3: Deploy</text>
+        <text x="735" y="113" text-anchor="middle" font-size="10" fill="#2d3748">• SSH to EC2 (appleboy)</text>
+        <text x="735" y="130" text-anchor="middle" font-size="10" fill="#2d3748">• ECR login via IAM role</text>
+        <text x="735" y="147" text-anchor="middle" font-size="10" fill="#2d3748">• docker pull + run</text>
+        <text x="735" y="164" text-anchor="middle" font-size="10" fill="#2d3748">• App live on :3000</text>
+        <text x="735" y="197" text-anchor="middle" font-size="9" fill="#718096">~15s</text>
+
+        <!-- Arrow to app -->
+        <path d="M835,140 L870,140" stroke="#718096" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- App running -->
+        <rect x="870" y="110" width="120" height="60" rx="10" fill="#f0fff4" stroke="#48bb78" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="930" y="133" text-anchor="middle" font-size="11" fill="#276749" font-weight="700">App Live</text>
+        <text x="930" y="149" text-anchor="middle" font-size="10" fill="#4a5568">EC2 :3000</text>
+        <text x="930" y="162" text-anchor="middle" font-size="10" fill="#4a5568">Docker container</text>
+
+        <!-- Conditions label -->
+        <text x="495" y="250" text-anchor="middle" font-size="10" fill="#e53e3e">⚑  Jobs 2 &amp; 3 run only on push to master/main</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ── 3. Infrastructure Architecture ────────────────────────────────── -->
+  <div class="section">
+    <div class="section-title">Infrastructure Architecture</div>
+    <div class="flow-wrap" style="margin-bottom:0">
+      <svg viewBox="0 0 1060 380" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#a0aec0"/>
+          </marker>
+        </defs>
+
+        <!-- GitHub -->
+        <rect x="20" y="140" width="130" height="80" rx="10" fill="#24292e" stroke="#444" stroke-width="1"/>
+        <text x="85" y="173" text-anchor="middle" font-size="12" fill="white" font-weight="700">GitHub</text>
+        <text x="85" y="190" text-anchor="middle" font-size="10" fill="#aaa">Actions Runner</text>
+        <text x="85" y="207" text-anchor="middle" font-size="10" fill="#aaa">Secrets store</text>
+
+        <!-- Arrow GH → AWS -->
+        <path d="M150,180 L190,180" stroke="#a0aec0" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+        <!-- AWS Cloud box -->
+        <rect x="190" y="30" width="680" height="320" rx="16" fill="none" stroke="#f6ad55" stroke-width="2" stroke-dasharray="6,3"/>
+        <text x="530" y="58" text-anchor="middle" font-size="12" fill="#dd6b20" font-weight="700">AWS Cloud (us-east-1)</text>
+
+        <!-- ECR -->
+        <rect x="215" y="75" width="140" height="70" rx="10" fill="#ebf8ff" stroke="#63b3ed" stroke-width="1.5"/>
+        <text x="285" y="103" text-anchor="middle" font-size="11" fill="#2b6cb0" font-weight="700">ECR</text>
+        <text x="285" y="119" text-anchor="middle" font-size="10" fill="#4a5568">okta-aws-cicd</text>
+        <text x="285" y="133" text-anchor="middle" font-size="10" fill="#718096">Container registry</text>
+
+        <!-- S3 -->
+        <rect x="215" y="165" width="140" height="70" rx="10" fill="#fffaf0" stroke="#f6ad55" stroke-width="1.5"/>
+        <text x="285" y="193" text-anchor="middle" font-size="11" fill="#c05621" font-weight="700">S3 Bucket</text>
+        <text x="285" y="209" text-anchor="middle" font-size="10" fill="#4a5568">Terraform state</text>
+        <text x="285" y="223" text-anchor="middle" font-size="10" fill="#718096">okta-cicd-tfstate-*</text>
+
+        <!-- VPC box -->
+        <rect x="390" y="65" width="450" height="265" rx="12" fill="none" stroke="#9f7aea" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="615" y="88" text-anchor="middle" font-size="11" fill="#6b46c1" font-weight="700">VPC: vpc-0b88b54e0ec77a954</text>
+
+        <!-- Subnet -->
+        <rect x="410" y="100" width="415" height="215" rx="10" fill="none" stroke="#68d391" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <text x="617" y="120" text-anchor="middle" font-size="10" fill="#276749">Subnet: subnet-0b5d10ffdec5a01c2 (public)</text>
+
+        <!-- Security Group -->
+        <rect x="430" y="130" width="145" height="165" rx="10" fill="#fff5f5" stroke="#fc8181" stroke-width="1.5"/>
+        <text x="502" y="153" text-anchor="middle" font-size="10" fill="#c53030" font-weight="700">Security Group</text>
+        <text x="502" y="170" text-anchor="middle" font-size="9" fill="#4a5568">ingress: 22 (SSH)</text>
+        <text x="502" y="185" text-anchor="middle" font-size="9" fill="#4a5568">ingress: 80 (HTTP)</text>
+        <text x="502" y="200" text-anchor="middle" font-size="9" fill="#4a5568">ingress: 3000 (App)</text>
+        <text x="502" y="215" text-anchor="middle" font-size="9" fill="#4a5568">egress: all</text>
+
+        <!-- EC2 -->
+        <rect x="600" y="130" width="195" height="165" rx="10" fill="#f0fff4" stroke="#48bb78" stroke-width="1.5"/>
+        <text x="697" y="153" text-anchor="middle" font-size="11" fill="#276749" font-weight="700">EC2 Instance</text>
+        <text x="697" y="170" text-anchor="middle" font-size="9" fill="#4a5568">Amazon Linux 2023</text>
+        <text x="697" y="185" text-anchor="middle" font-size="9" fill="#4a5568">Docker + AWS CLI</text>
+        <text x="697" y="200" text-anchor="middle" font-size="9" fill="#4a5568">IAM profile → ECR read</text>
+        <text x="697" y="215" text-anchor="middle" font-size="9" fill="#4a5568">Public IP (dynamic)</text>
+        <text x="697" y="232" text-anchor="middle" font-size="10" fill="#276749" font-weight="600">Node.js app :3000</text>
+        <rect x="632" y="255" width="130" height="24" rx="6" fill="#48bb78"/>
+        <text x="697" y="272" text-anchor="middle" font-size="10" fill="white" font-weight="600">Docker container</text>
+
+        <!-- SG → EC2 arrow -->
+        <path d="M575,212 L600,212" stroke="#a0aec0" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+        <!-- IAM -->
+        <rect x="215" y="255" width="140" height="70" rx="10" fill="#faf5ff" stroke="#9f7aea" stroke-width="1.5"/>
+        <text x="285" y="283" text-anchor="middle" font-size="11" fill="#553c9a" font-weight="700">IAM</text>
+        <text x="285" y="299" text-anchor="middle" font-size="10" fill="#4a5568">EC2 instance profile</text>
+        <text x="285" y="313" text-anchor="middle" font-size="10" fill="#718096">ECRReadOnly policy</text>
+
+        <!-- IAM → EC2 -->
+        <path d="M355,290 L430,260" stroke="#9f7aea" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr2)"/>
+
+        <!-- ECR → EC2 -->
+        <path d="M355,115 L600,180" stroke="#63b3ed" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr2)"/>
+        <text x="470" y="140" text-anchor="middle" font-size="9" fill="#3182ce">docker pull</text>
+
+        <!-- S3 → TF label -->
+        <path d="M150,165 L215,200" stroke="#a0aec0" stroke-width="1.5" stroke-dasharray="3,2" marker-end="url(#arr2)"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ── 4. System Architecture Layers ─────────────────────────────────── -->
+  <div class="section">
+    <div class="section-title">System Architecture Layers</div>
+    <div class="layers">
+      <div class="layer">
+        <div class="layer-label" style="background:#24292e">Source</div>
+        <div class="layer-items">
+          <span class="chip" style="border-color:#24292e;color:#24292e">GitHub (faisal-34/okta-aws-cicd)</span>
+          <span class="chip" style="border-color:#24292e;color:#24292e">master branch → push trigger</span>
+          <span class="chip" style="border-color:#24292e;color:#24292e">GitHub Secrets (AWS keys, EC2 SSH key)</span>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="layer-label" style="background:#38b2ac">Build</div>
+        <div class="layer-items">
+          <span class="chip" style="border-color:#38b2ac;color:#319795">Docker (Node.js app)</span>
+          <span class="chip" style="border-color:#38b2ac;color:#319795">Amazon ECR push</span>
+          <span class="chip" style="border-color:#38b2ac;color:#319795">Image tagged with git SHA</span>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="layer-label" style="background:#9f7aea">Infra (IaC)</div>
+        <div class="layer-items">
+          <span class="chip" style="border-color:#9f7aea;color:#6b46c1">Terraform 1.5.0</span>
+          <span class="chip" style="border-color:#9f7aea;color:#6b46c1">AWS Provider ~&gt; 5.0</span>
+          <span class="chip" style="border-color:#9f7aea;color:#6b46c1">S3 remote state backend</span>
+          <span class="chip" style="border-color:#9f7aea;color:#6b46c1">EC2 + SG + IAM + ECR</span>
+          <span class="chip" style="border-color:#9f7aea;color:#6b46c1">Okta SAML SSO (manual/separate)</span>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="layer-label" style="background:#e53e3e">Deploy</div>
+        <div class="layer-items">
+          <span class="chip" style="border-color:#e53e3e;color:#c53030">SSH via appleboy/ssh-action</span>
+          <span class="chip" style="border-color:#e53e3e;color:#c53030">EC2 IP from Terraform output</span>
+          <span class="chip" style="border-color:#e53e3e;color:#c53030">docker pull from ECR</span>
+          <span class="chip" style="border-color:#e53e3e;color:#c53030">docker run --restart always :3000</span>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="layer-label" style="background:#dd6b20">Identity</div>
+        <div class="layer-items">
+          <span class="chip" style="border-color:#dd6b20;color:#c05621">Okta SAML IdP → AWS Console SSO</span>
+          <span class="chip" style="border-color:#dd6b20;color:#c05621">OktaSSOAdminRole (AdministratorAccess)</span>
+          <span class="chip" style="border-color:#dd6b20;color:#c05621">OktaSSOReadOnlyRole (ReadOnlyAccess)</span>
+          <span class="chip" style="border-color:#dd6b20;color:#c05621">Provisioned via terraform/okta/ (manual)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 5. Features ────────────────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-title">Features</div>
+    <div class="feat-grid">
+      <div class="feat-card">
+        <h3>🔁 Automated CI/CD</h3>
+        <ul>
+          <li>Push to master triggers full pipeline</li>
+          <li>Build → Terraform → Deploy in sequence</li>
+          <li>15-minute job timeout prevents hangs</li>
+          <li>Job outputs pass EC2 IP between jobs</li>
+        </ul>
+      </div>
+      <div class="feat-card">
+        <h3>🏗 Infrastructure as Code</h3>
+        <ul>
+          <li>EC2 with correct VPC &amp; subnet</li>
+          <li>Security group scoped to VPC</li>
+          <li>IAM instance profile for ECR access</li>
+          <li>State stored in S3 for team sharing</li>
+        </ul>
+      </div>
+      <div class="feat-card">
+        <h3>🔐 Identity &amp; Access</h3>
+        <ul>
+          <li>Okta SAML SSO to AWS Console</li>
+          <li>Federated Admin &amp; ReadOnly roles</li>
+          <li>EC2 IAM role (ECR read only)</li>
+          <li>No static credentials on EC2</li>
+        </ul>
+      </div>
+      <div class="feat-card">
+        <h3>📦 Container Delivery</h3>
+        <ul>
+          <li>Docker image per git commit (SHA tag)</li>
+          <li>Private ECR registry per AWS account</li>
+          <li>Zero-downtime swap (stop → rm → run)</li>
+          <li>--restart always for auto-recovery</li>
+        </ul>
+      </div>
+      <div class="feat-card">
+        <h3>🧩 Modular Terraform</h3>
+        <ul>
+          <li>terraform/aws/ — AWS resources</li>
+          <li>terraform/okta/ — Okta (manual, one-time)</li>
+          <li>Conditional Okta resources (count = 0 if no metadata)</li>
+          <li>Backend isolated from provider config</li>
+        </ul>
+      </div>
+      <div class="feat-card">
+        <h3>🔒 Security Posture</h3>
+        <ul>
+          <li>Secrets in GitHub encrypted store only</li>
+          <li>Okta provider excluded from CI (no token in runner)</li>
+          <li>SG restricts inbound to ports 22, 80, 3000</li>
+          <li>Least-privilege ECR read policy on EC2</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 6. GitHub Secrets Required ────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-title">Required GitHub Secrets</div>
+    <table>
+      <thead>
+        <tr><th>Secret</th><th>Used By</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>AWS_ACCESS_KEY_ID</code></td><td>All jobs</td><td>IAM user key for ECR, Terraform, EC2 describe</td></tr>
+        <tr><td><code>AWS_SECRET_ACCESS_KEY</code></td><td>All jobs</td><td>IAM user secret</td></tr>
+        <tr><td><code>AWS_ACCOUNT_ID</code></td><td>Build, Terraform</td><td>Account ID for ECR URI construction</td></tr>
+        <tr><td><code>EC2_KEY_NAME</code></td><td>Terraform</td><td>Name of the EC2 key pair in AWS</td></tr>
+        <tr><td><code>EC2_SSH_PRIVATE_KEY</code></td><td>Deploy</td><td>Private key (.pem) for SSH to EC2</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── 7. Deployment Model ────────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-title">Deployment Model</div>
+    <div class="biz-grid">
+      <div class="biz-card" style="border-left-color:#38b2ac">
+        <h3>Trigger</h3>
+        <p>Any <code>git push</code> to <code>master</code> or <code>main</code>. All 3 jobs run in sequence with dependency chain.</p>
+      </div>
+      <div class="biz-card" style="border-left-color:#9f7aea">
+        <h3>State Management</h3>
+        <p>Terraform state in S3 bucket <code>okta-cicd-tfstate-&lt;account-id&gt;</code>. Enables incremental applies — only changed resources are updated.</p>
+      </div>
+      <div class="biz-card" style="border-left-color:#e53e3e">
+        <h3>EC2 Lifecycle</h3>
+        <p>Terraform manages EC2 lifecycle. Adding <code>iam_instance_profile</code> or <code>associate_public_ip_address</code> forces recreate (immutable fields).</p>
+      </div>
+      <div class="biz-card" style="border-left-color:#dd6b20">
+        <h3>Okta SSO Setup</h3>
+        <p>One-time manual run of <code>terraform/okta/</code> with <code>OKTA_API_TOKEN</code>. Not part of CI. Creates SAML IdP + federated IAM roles.</p>
+      </div>
+    </div>
+  </div>
+
+  <p style="text-align:center;color:#a0aec0;font-size:.8rem;margin-top:40px;padding-top:20px;border-top:1px solid #e2e8f0;">
+    Okta AWS CI/CD Pipeline · GitHub: faisal-34/okta-aws-cicd · AWS Account 493675641194 · us-east-1
+  </p>
+
+</div>
+</body>
+</html>
