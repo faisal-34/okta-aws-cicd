@@ -2,7 +2,7 @@ terraform {
   required_version = ">= 1.5.0"
 
   backend "s3" {
-    bucket = "your-terraform-state-bucket"
+    bucket = "okta-cicd-tfstate-493675641194"
     key    = "okta-aws-cicd/terraform.tfstate"
     region = "us-east-1"
   }
