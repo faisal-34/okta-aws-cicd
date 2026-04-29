@@ -21,6 +21,12 @@ variable "okta_saml_metadata_xml" {
   default     = ""
 }
 
+variable "vpc_id" {
+  description = "VPC ID to launch resources into"
+  type        = string
+  default     = "vpc-0b88b54e0ec77a954"
+}
+
 variable "subnet_id" {
   description = "Subnet ID to launch EC2 into"
   type        = string
