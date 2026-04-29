@@ -20,17 +20,6 @@ variable "aws_account_id" {
   type        = string
 }
 
-variable "okta_org_name" {
-  description = "Okta organization name (subdomain, e.g. trial-2304070)"
-  type        = string
-}
-
-variable "okta_api_token" {
-  description = "Okta API token"
-  type        = string
-  sensitive   = true
-}
-
 variable "app_image" {
   description = "Docker image URI from ECR (set by pipeline after build)"
   type        = string

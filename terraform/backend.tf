@@ -12,10 +12,8 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
-    okta = {
-      source  = "okta/okta"
-      version = "~> 4.0"
-    }
+    # okta provider is used only for manual SSO setup via terraform/okta/
+    # Run that directory separately — not part of the automated pipeline.
   }
 }
 
