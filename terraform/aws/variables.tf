@@ -21,6 +21,12 @@ variable "okta_saml_metadata_xml" {
   default     = ""
 }
 
+variable "subnet_id" {
+  description = "Subnet ID to launch EC2 into"
+  type        = string
+  default     = "subnet-0b5d10ffdec5a01c2"
+}
+
 variable "app_image" {
   description = "Docker image URI (ECR)"
   type        = string
