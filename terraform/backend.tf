@@ -21,8 +21,4 @@ provider "aws" {
   region = var.aws_region
 }
 
-provider "okta" {
-  org_name  = var.okta_org_name
-  base_url  = "okta.com"
-  api_token = var.okta_api_token
-}
+# Okta provider config lives in terraform/okta/ for manual one-time SSO setup only.
