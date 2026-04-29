@@ -1,0 +1,10 @@
+{
+  "name": "okta-aws-cicd-app",
+  "version": "1.0.0",
+  "description": "Okta AWS CI/CD demo app",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {}
+}
