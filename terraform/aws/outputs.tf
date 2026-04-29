@@ -10,15 +10,15 @@ output "ec2_public_dns" {
 
 output "okta_saml_provider_arn" {
   description = "ARN of the Okta SAML Identity Provider"
-  value       = aws_iam_saml_provider.okta.arn
+  value       = length(aws_iam_saml_provider.okta) > 0 ? aws_iam_saml_provider.okta[0].arn : ""
 }
 
 output "okta_sso_admin_role_arn" {
   description = "ARN of the Okta SSO Admin IAM Role"
-  value       = aws_iam_role.okta_sso_admin.arn
+  value       = length(aws_iam_role.okta_sso_admin) > 0 ? aws_iam_role.okta_sso_admin[0].arn : ""
 }
 
 output "okta_sso_readonly_role_arn" {
   description = "ARN of the Okta SSO ReadOnly IAM Role"
-  value       = aws_iam_role.okta_sso_readonly.arn
+  value       = length(aws_iam_role.okta_sso_readonly) > 0 ? aws_iam_role.okta_sso_readonly[0].arn : ""
 }

@@ -19,7 +19,7 @@ module "aws_infra" {
   instance_type          = var.instance_type
   key_name               = var.key_name
   app_image              = var.app_image
-  okta_saml_metadata_xml = file("${path.module}/okta-metadata.xml")
+  okta_saml_metadata_xml = var.okta_saml_metadata_xml
 }
 
 # ── Outputs ───────────────────────────────────────────────────────────────────

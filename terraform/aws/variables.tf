@@ -18,6 +18,7 @@ variable "key_name" {
 variable "okta_saml_metadata_xml" {
   description = "SAML metadata XML from Okta app"
   type        = string
+  default     = ""
 }
 
 variable "app_image" {

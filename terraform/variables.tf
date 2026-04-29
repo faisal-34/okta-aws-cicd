@@ -36,3 +36,9 @@ variable "app_image" {
   type        = string
   default     = ""
 }
+
+variable "okta_saml_metadata_xml" {
+  description = "SAML metadata XML from Okta (download from Okta app metadata URL). Leave empty to skip SAML provider creation."
+  type        = string
+  default     = ""
+}
