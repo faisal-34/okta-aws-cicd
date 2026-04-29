@@ -61,6 +61,7 @@ resource "aws_instance" "app" {
   subnet_id                   = var.subnet_id
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.app.id]
+  iam_instance_profile        = aws_iam_instance_profile.ec2_ecr.name
 
   user_data = <<-EOF
     #!/bin/bash
