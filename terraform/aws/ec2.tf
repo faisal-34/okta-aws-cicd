@@ -55,11 +55,12 @@ resource "aws_security_group" "app" {
 
 # ── EC2 Instance ─────────────────────────────────────────────────────────────
 resource "aws_instance" "app" {
-  ami                    = data.aws_ami.amazon_linux.id
-  instance_type          = var.instance_type
-  key_name               = var.key_name
-  subnet_id              = var.subnet_id
-  vpc_security_group_ids = [aws_security_group.app.id]
+  ami                         = data.aws_ami.amazon_linux.id
+  instance_type               = var.instance_type
+  key_name                    = var.key_name
+  subnet_id                   = var.subnet_id
+  associate_public_ip_address = true
+  vpc_security_group_ids      = [aws_security_group.app.id]
 
   user_data = <<-EOF
     #!/bin/bash
